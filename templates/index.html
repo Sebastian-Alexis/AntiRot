@@ -30,10 +30,10 @@
     let mediaRecorder;
     let audioChunks = [];
 
-    recordButton.addEventListener("click", async () => {
-        if (!mediaRecorder) {
+    async function setupMediaRecorder() {
+        try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
 
             mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
@@ -41,7 +41,12 @@
 
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-                audioChunks = [];
+                console.log("Audio Blob:", audioBlob);
+
+                if (audioBlob.size === 0) {
+                    alert("The recorded audio is empty. Please try recording again.");
+                    return;
+                }
 
                 const formData = new FormData();
                 formData.append("audio", audioBlob);
@@ -52,16 +57,28 @@
                         body: formData,
                     });
 
-                    const result = await response.json();
+                    const textResponse = await response.text();
+                    console.log("Server Response:", textResponse);
+
+                    const result = JSON.parse(textResponse);
                     inputBox.value = result.transcript;
                 } catch (error) {
                     console.error("Error transcribing audio:", error);
+                    alert("An error occurred while transcribing audio. Please check the console for details.");
                 }
             };
+        } catch (error) {
+            console.error("Error accessing microphone:", error);
+            alert("Failed to access microphone. Please check your permissions.");
         }
+    }
+
+    recordButton.addEventListener("click", async () => {
+        if (!mediaRecorder) await setupMediaRecorder();
 
         if (mediaRecorder.state === "inactive") {
             recordButton.textContent = "🎙️ Stop Recording";
+            audioChunks = [];
             mediaRecorder.start();
         } else {
             recordButton.textContent = "🎤 Record";

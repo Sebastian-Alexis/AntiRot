@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex flex-col items-center gap-6 pt-6">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold">Anti Rot</h1>
+        <p class="text-gray-500 italic">Your personal brain rot blaster that lets you understand the chronically online without having to fry your own brain.</p>
+        <p class="text-gray-500 italic"><a href="https://github.com/Sebastian-Alexis/AntiRot" class="underline">View Github</a></p>
+    </div>
+    <div class="flex gap-6 w-full max-w-4xl">
+        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-1/2">
+            <h2 class="text-xl font-bold mb-2">Input</h2>
+            <textarea
+                id="inputBox"
+                class="textarea textarea-bordered w-full"
+                placeholder="Enter text to translate"
+                rows="8"
+            ></textarea>
+            <button
+                id="translateButton"
+                class="btn btn-primary mt-4"
+            >Translate</button>
+        </div>
+        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-1/2">
+            <h2 class="text-xl font-bold mb-2">Output</h2>
+            <div
+                id="outputBox"
+                class="p-4 border rounded bg-base-100 w-full h-full"
+            >Your translated text will appear here</div>
+        </div>
+    </div>
+
+    <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-full max-w-4xl">
+        <h2 class="text-xl font-bold mb-2">Explanation</h2>
+        <div
+            id="explanationBox"
+            class="p-4 border rounded bg-base-100 w-full"
+        >The explanation for the translation will appear here</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById("translateButton").addEventListener("click", async function () {
+        const inputText = document.getElementById("inputBox").value;
+
+        try {
+            const response = await fetch("/translate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ text: inputText }),
+            });
+
+            const result = await response.json();
+            document.getElementById("outputBox").textContent = result.output;
+            document.getElementById("explanationBox").textContent = result.explanation;
+        } catch (error) {
+            console.error("Error during translation:", error);
+            document.getElementById("outputBox").textContent = "An error occurred while translating.";
+            document.getElementById("explanationBox").textContent = "An error occurred while generating the explanation.";
+        }
+    });
+</script>
+{% endblock %}

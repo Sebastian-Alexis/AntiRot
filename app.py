@@ -2,8 +2,20 @@ from flask import Flask, render_template, request, jsonify
 import json
 import re
 from togetherai import smooth_translation
+from wiki_indexer import scrape_wikipedia_glossary, save_to_json
+
 
 app = Flask(__name__)
+
+#add/update definitions.json
+
+try:
+    print("Updating definitions.json from Wikipedia...")
+    glossary = scrape_wikipedia_glossary("https://en.wikipedia.org/wiki/Glossary_of_Generation_Z_slang")
+    save_to_json(glossary, "definitions.json")
+    print(f"Successfully updated definitions.json with {len(glossary)} terms.")
+except Exception as e:
+    print(f"Error updating definitions.json: {e}")
 
 #load json - might need to fix when running on mac/lunx? not entirely sure - will update when loading onto raspberry pi
 with open("definitions.json", "r", encoding="utf-8") as file:

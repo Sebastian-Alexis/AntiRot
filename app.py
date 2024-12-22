@@ -94,34 +94,22 @@ def refresh_glossaries():
     data = request.json
     links = data.get("links", "").split(",")
     updated_glossary = {}
-
-    # Load existing definitions
     try:
         with open("definitions.json", "r", encoding="utf-8") as file:
             existing_glossary = json.load(file)
     except FileNotFoundError:
-        existing_glossary = {}  # Start with an empty dictionary if the file doesn't exist
+        existing_glossary = {}  
         print("definitions.json not found. Starting fresh.")
-
-    # Scrape glossaries and merge them
     for link in links:
         try:
             print(f"Scraping glossary from {link.strip()}...")
             glossary = scrape_wikipedia_glossary(link.strip())
-            updated_glossary.update(glossary)  # Add new terms
+            updated_glossary.update(glossary) 
         except Exception as e:
             print(f"Error scraping {link.strip()}: {e}")
-
-    # Debug: Check the size of the new terms
     print(f"New terms scraped: {len(updated_glossary)}")
-
-    # Merge new terms with the existing glossary
-    combined_glossary = {**existing_glossary, **updated_glossary}  # Ensure terms are merged without duplication
-
-    # Debug: Check the total size after merging
+    combined_glossary = {**existing_glossary, **updated_glossary} 
     print(f"Total terms after merging: {len(combined_glossary)}")
-
-    # Save updated definitions back to file
     try:
         with open("definitions.json", "w", encoding="utf-8") as file:
             json.dump(combined_glossary, file, ensure_ascii=False, indent=4)

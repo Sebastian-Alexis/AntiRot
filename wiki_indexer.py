@@ -31,16 +31,11 @@ def scrape_wikipedia_glossary(url):
 
 def save_to_json(data, filename="definitions.json"):
     try:
-        # Load existing data if the file exists
         with open(filename, "r", encoding="utf-8") as file:
             existing_data = json.load(file)
     except FileNotFoundError:
-        existing_data = {}  # Start with an empty dictionary if file doesn't exist
-
-    # Merge new data with existing data
+        existing_data = {}
     existing_data.update(data)
-
-    # Save merged data back to the file
     with open(filename, "w", encoding="utf-8") as file:
         json.dump(existing_data, file, ensure_ascii=False, indent=4)
 

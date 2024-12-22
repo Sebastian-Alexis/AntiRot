@@ -57,7 +57,19 @@
             class="w-full"
         >
         <div id="speedValue" class="mt-2 text-center">3 seconds</div>
+    
+        <label for="glossaryLinks" class="mt-4 mb-2">
+            Wikipedia Glossary Links, one link at a time (<a href="https://en.wikipedia.org/wiki/Category:Lists_of_slang" class="underline text-black">Full list here</a>):
+        </label>
+        <textarea
+            id="glossaryLinks"
+            class="textarea textarea-bordered w-full"
+            rows="5"
+            placeholder="Enter multiple links separated by commas"
+        >https://en.wikipedia.org/wiki/Glossary_of_Generation_Z_slang</textarea>
+        <button id="refreshGlossaries" class="btn btn-primary mt-4 w-full sm:w-auto">Refresh Glossaries</button>
     </div>
+    
 </div>
 {% endblock %}
 
@@ -160,6 +172,33 @@
             alert("Failed to access the microphone.");
         }
     });
+
+    document.getElementById("refreshGlossaries").addEventListener("click", async function () {
+        const glossaryLinks = document.getElementById("glossaryLinks").value.trim();
+        if (!glossaryLinks) {
+            alert("Please enter at least one Wikipedia glossary link.");
+            return;
+        }
+
+        try {
+            const response = await fetch("/refresh_glossaries", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ links: glossaryLinks }),
+            });
+            const result = await response.json();
+            if (result.message) {
+                alert(result.message);
+            } else if (result.error) {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error("Error refreshing glossaries:", error);
+            alert("An error occurred while refreshing the glossaries.");
+        }
+    });
+
+
 
     document.getElementById("stopButton").addEventListener("click", function () {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {

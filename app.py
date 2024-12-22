@@ -1,46 +1,40 @@
 from flask import Flask, render_template, request, jsonify
-import json
-import re
-from togetherai import smooth_translation
-from wiki_indexer import scrape_wikipedia_glossary, save_to_json
-
+import os
+import speech_recognition as sr
+from pydub import AudioSegment
 
 app = Flask(__name__)
 
-#add/update definitions.json
+def transcribe_audio(file_path):
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(file_path) as source:
+        audio_data = recognizer.record(source)
 
-try:
-    print("Updating definitions.json from Wikipedia...")
-    glossary = scrape_wikipedia_glossary("https://en.wikipedia.org/wiki/Glossary_of_Generation_Z_slang")
-    save_to_json(glossary, "definitions.json")
-    print(f"Successfully updated definitions.json with {len(glossary)} terms.")
-except Exception as e:
-    print(f"Error updating definitions.json: {e}")
-
-#load json - might need to fix when running on mac/lunx? not entirely sure - will update when loading onto raspberry pi
-with open("definitions.json", "r", encoding="utf-8") as file:
-    DEFINITIONS = json.load(file)
-
-def translate_text(input_text):
-    #replace
-    output_text = input_text
-    for term, definition in sorted(DEFINITIONS.items(), key=lambda x: -len(x[0])):  # Sort by term length (desc)
-        #matching terms, case insensitive
-        pattern = r"\b" + re.escape(term) + r"\b"
-        output_text = re.sub(pattern, f"[{definition}]", output_text, flags=re.IGNORECASE)
-    return output_text
+    try:
+        transcript = recognizer.recognize_sphinx(audio_data)
+        return transcript
+    except sr.UnknownValueError:
+        return "Could not understand audio."
+    except sr.RequestError as e:
+        return f"Error with recognition engine: {e}"
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@app.route("/translate", methods=["POST"])
-def translate():
-    data = request.json
-    input_text = data.get("text", "")
-    rough_translation = translate_text(input_text)
-    refined_translation, explanation = smooth_translation(rough_translation)
-    return jsonify({"output": refined_translation, "explanation": explanation})
+@app.route("/upload-audio", methods=["POST"])
+def upload_audio():
+    audio_file = request.files["audio"]
+    audio_path = "temp_audio.wav"
+
+    sound = AudioSegment.from_file(audio_file, format="webm")
+    sound = sound.set_frame_rate(16000).set_channels(1)
+    sound.export(audio_path, format="wav")
+
+    transcript = transcribe_audio(audio_path)
+    os.remove(audio_path)
+
+    return jsonify({"transcript": transcript})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8080)

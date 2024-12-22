@@ -1,88 +1,199 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="flex flex-col items-center gap-6 pt-6">
+<div class="flex flex-col items-center gap-6 pt-6 px-4 md:px-6 lg:px-8">
     <div class="text-center">
-        <h1 class="text-4xl font-bold">Anti Rot</h1>
-        <p class="text-gray-500 italic">Your personal brain rot blaster that lets you understand the chronically online without having to fry your own brain.</p>
+        <h1 class="text-3xl md:text-4xl font-bold">Anti Rot</h1>
+        <p class="text-gray-500 italic mt-2">
+            Your personal brain rot blaster that lets you understand the chronically online without frying your brain.
+        </p>
+        <p class="text-gray-500 italic mt-2">
+            <a href="https://github.com/Sebastian-Alexis/AntiRot" class="underline hover:text-blue-500">View Github</a>
+        </p>
     </div>
-    <div class="flex gap-6 w-full max-w-4xl">
-        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-1/2">
-            <h2 class="text-xl font-bold mb-2">Input</h2>
-            <textarea id="inputBox" class="textarea textarea-bordered w-full" placeholder="Enter text to translate" rows="8"></textarea>
-            <div class="flex items-center mt-4 gap-4">
-                <button id="translateButton" class="btn btn-primary">Translate</button>
-                <button id="recordButton" class="btn btn-secondary">🎤 Record</button>
+
+    <div class="flex flex-col lg:flex-row gap-6 w-full max-w-6xl">
+        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-full lg:w-1/2">
+            <h2 class="text-lg md:text-xl font-bold mb-2">Input</h2>
+            <textarea
+                id="inputBox"
+                class="textarea textarea-bordered w-full h-32 md:h-40 lg:h-48"
+                placeholder="Enter text to translate"
+            ></textarea>
+            <div class="flex flex-col sm:flex-row gap-4 mt-4 w-full">
+                <button id="translateButton" class="btn btn-primary w-full sm:w-auto">Translate</button>
+                <button id="recordButton" class="btn btn-success w-full sm:w-auto">Record 🎙️</button>
+                <button id="stopButton" class="btn btn-secondary hidden w-full sm:w-auto">Stop 🛑</button>
             </div>
         </div>
-        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-1/2">
-            <h2 class="text-xl font-bold mb-2">Output</h2>
-            <div id="outputBox" class="p-4 border rounded bg-base-100 w-full h-full">Your translated text will appear here</div>
+
+        <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-full lg:w-1/2">
+            <h2 class="text-lg md:text-xl font-bold mb-2">Output</h2>
+            <div
+                id="outputBox"
+                class="p-4 border rounded bg-base-100 w-full h-32 md:h-40 lg:h-48 typewriter"
+            ></div>
         </div>
+    </div>
+
+    <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-full max-w-6xl">
+        <h2 class="text-lg md:text-xl font-bold mb-2">Explanation</h2>
+        <div
+            id="explanationBox"
+            class="p-4 border rounded bg-base-100 w-full h-32 md:h-40 lg:h-48 typewriter"
+        ></div>
+    </div>
+
+    <div class="flex flex-col items-start p-4 border rounded shadow-md bg-base-200 w-full max-w-6xl">
+        <h2 class="text-lg md:text-xl font-bold mb-2">UI Configuration</h2>
+        <label for="speedSlider" class="mb-2">Typing Speed (seconds):</label>
+        <input
+            type="range"
+            id="speedSlider"
+            min="0.5"
+            max="10"
+            step="0.1"
+            value="3"
+            class="w-full"
+        >
+        <div id="speedValue" class="mt-2 text-center">3 seconds</div>
     </div>
 </div>
 {% endblock %}
 
+{% block styles %}
+<style>
+    .typewriter {
+        font-family: monospace;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        position: relative;
+    }
+    .typewriter::after {
+        content: "|";
+        position: absolute;
+        right: 0;
+        animation: blink 1s infinite;
+    }
+    @keyframes blink {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
-    const recordButton = document.getElementById("recordButton");
-    const inputBox = document.getElementById("inputBox");
     let mediaRecorder;
     let audioChunks = [];
+    const speedSlider = document.getElementById("speedSlider");
+    const speedValue = document.getElementById("speedValue");
 
-    async function setupMediaRecorder() {
+    speedSlider.addEventListener("input", () => {
+        speedValue.textContent = `${speedSlider.value} seconds`;
+    });
+
+    function typewriterEffect(element, text, duration) {
+        const totalCharacters = text.length;
+        const interval = duration / totalCharacters;
+        let currentIndex = 0;
+        element.textContent = "";
+        const typeInterval = setInterval(() => {
+            if (currentIndex < totalCharacters) {
+                element.textContent += text[currentIndex];
+                currentIndex++;
+            } else {
+                clearInterval(typeInterval);
+            }
+        }, interval);
+    }
+
+    document.getElementById("recordButton").addEventListener("click", async function () {
+        const recordButton = document.getElementById("recordButton");
+        const stopButton = document.getElementById("stopButton");
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("Your browser does not support audio recording.");
+            return;
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = function (event) {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
             };
-
-            mediaRecorder.onstop = async () => {
+            mediaRecorder.onstop = async function () {
                 const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-                console.log("Audio Blob:", audioBlob);
-
                 if (audioBlob.size === 0) {
-                    alert("The recorded audio is empty. Please try recording again.");
+                    alert("Recording failed: Empty audio data.");
                     return;
                 }
-
                 const formData = new FormData();
-                formData.append("audio", audioBlob);
-
+                formData.append("audio", audioBlob, "recording.webm");
                 try {
-                    const response = await fetch("/upload-audio", {
+                    const response = await fetch("/upload_audio", {
                         method: "POST",
                         body: formData,
                     });
-
-                    const textResponse = await response.text();
-                    console.log("Server Response:", textResponse);
-
-                    const result = JSON.parse(textResponse);
-                    inputBox.value = result.transcript;
+                    const result = await response.json();
+                    if (result.transcription) {
+                        document.getElementById("inputBox").value = result.transcription;
+                    } else {
+                        alert("Transcription failed: " + (result.error || "Unknown error"));
+                    }
                 } catch (error) {
-                    console.error("Error transcribing audio:", error);
-                    alert("An error occurred while transcribing audio. Please check the console for details.");
+                    console.error("Error during audio upload:", error);
+                    alert("An error occurred while processing the audio.");
                 }
             };
+            mediaRecorder.start();
+            recordButton.classList.add("hidden");
+            stopButton.classList.remove("hidden");
         } catch (error) {
             console.error("Error accessing microphone:", error);
-            alert("Failed to access microphone. Please check your permissions.");
+            alert("Failed to access the microphone.");
         }
-    }
+    });
 
-    recordButton.addEventListener("click", async () => {
-        if (!mediaRecorder) await setupMediaRecorder();
-
-        if (mediaRecorder.state === "inactive") {
-            recordButton.textContent = "🎙️ Stop Recording";
-            audioChunks = [];
-            mediaRecorder.start();
-        } else {
-            recordButton.textContent = "🎤 Record";
+    document.getElementById("stopButton").addEventListener("click", function () {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop();
+        }
+        document.getElementById("recordButton").classList.remove("hidden");
+        document.getElementById("stopButton").classList.add("hidden");
+    });
+
+    document.getElementById("translateButton").addEventListener("click", async function () {
+        const inputBox = document.getElementById("inputBox");
+        const outputBox = document.getElementById("outputBox");
+        const explanationBox = document.getElementById("explanationBox");
+        if (!inputBox.value.trim()) {
+            alert("Please enter text to translate.");
+            return;
+        }
+        try {
+            const response = await fetch("/translate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: inputBox.value }),
+            });
+            const result = await response.json();
+            if (result.output && result.explanation) {
+                const duration = parseFloat(speedSlider.value) * 1000;
+                typewriterEffect(outputBox, result.output, duration);
+                typewriterEffect(explanationBox, result.explanation, duration);
+            } else {
+                alert("Translation failed. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error during translation:", error);
+            alert("An error occurred while translating the text.");
         }
     });
 </script>
